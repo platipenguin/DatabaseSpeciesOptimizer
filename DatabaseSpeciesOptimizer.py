@@ -35,6 +35,7 @@ class Protein:
 		self.name = self.extractProteinName(entry)
 		self.data = entry[entry.find('OX='):entry.find('\n')]
 		self.sequence = entry[entry.find('\n') + 1:]
+		self.hitPeptides = set()
 	
 	# This function takes a single protein entry from a .fasta file and returns all the species for that entry
 	def extractSpecies(self, entry):
@@ -175,19 +176,21 @@ for resFile in [x for x in tsvPath.iterdir() if x.suffix == '.tsv']:
 				peptides[sequence] = Peptide(sequence)
 				specCount += 1
 			for hit in hitList:
+				ref.getProt(hit).hitPeptides.add(sequence)
 				for species in ref.getProt(hit).taxa:
 					peptides[sequence].coveredBy.add(species)
 					speciesList[species].coveredPeptides.add(sequence)
 print(f'Total spec count: {specCount}')
 
-# Only include peptides that were seen more than once across all samples
+# Only include peptides whose proteins had more than one unique peptide identified across all samples
 peptidesToInclude = set()
 elCount1 = 0
-for pep in peptides.keys():
-	if peptides[pep].timesFound > 1 and len(peptides[pep].seq.replace('+15.995', '')) > 9:
-		peptidesToInclude.add(peptides[pep].seq)
-		if len(peptides[pep].coveredBy) == 1:
-			elCount1 += 1
+for prot in ref.db.values():
+	if len(prot.hitPeptides) > 1:
+		for pep in prot.hitPeptides:
+			peptidesToInclude.add(pep)
+for pep in [pep for pep in peptidesToInclude if len(peptides[pep].coveredBy) == 1]:
+	elCount1 += 1
 print(f'Total number of unique peptides: {str(len(peptides))}')
 print(f'Number of unique peptides after filtering: {str(len(peptidesToInclude))}')
 print(f'Number of filtered peptides covered by only 1 genome: {str(elCount1)}')
