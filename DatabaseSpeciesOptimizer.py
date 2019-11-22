@@ -198,27 +198,26 @@ print(f'Number of filtered peptides covered by only 1 genome: {str(elCount1)}')
 # Make the list of genomes that will hit every included peptide
 print('Determining optimal database taxa list...')
 genomeList = []
-for species in speciesList.values():
-	genomeList.append(species)
-foundOptimization = True
-while foundOptimization:
-	foundOptimization = False
-	for i in range(len(genomeList)):
-		tempList = []
-		for j in range(len(genomeList)):
-			if j == i:
-				continue
-			tempList.append(genomeList[j])
-		tempCovered = set()
-		for x in tempList:
-			tempCovered.update(x.coveredPeptides)
-		if len(peptidesToInclude.difference(tempCovered)) == 0:
-			del genomeList[i]
-			foundOptimization = True
-			break
+prevCovered = set()
+workingList = []
+for genome in speciesList.values():
+	workingList.append(genome)
+bestDiff = 1000000000000000000000
+while bestDiff > 0:
+	bestGenome = -1
+	for j in range(len(workingList)):
+		tempCovered = prevCovered.copy()
+		tempCovered.update(workingList[j].coveredPeptides)
+		delta = len(peptidesToInclude.difference(tempCovered))
+		if delta < bestDiff:
+			bestDiff = delta
+			bestGenome = j
+	prevCovered.update(workingList[bestGenome].coveredPeptides)
+	genomeList.append(workingList[bestGenome])
+	del workingList[bestGenome]
 
 # Write the final list of taxa to stdout
-print('Building database with the following taxa...')
+print(f'Building database with the following {str(len(genomeList))} taxa...')
 speciesNames = set()
 for species in genomeList:
 	print(species.name)
